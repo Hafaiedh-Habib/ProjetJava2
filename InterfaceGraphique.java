@@ -17,7 +17,7 @@ public class InterfaceGraphique extends JFrame {
 
         listModel = new DefaultListModel<>();
         listContacts = new JList<>(listModel);
-        listContacts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listContacts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); // il peut selectionner un seul contact
 
         // Création des composants
         JButton btnAjouter = new JButton("Ajouter");
@@ -83,7 +83,7 @@ public class InterfaceGraphique extends JFrame {
         });
 
         listContacts.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && listContacts.getSelectedIndex() != -1) {
+            if (e.getValueIsAdjusting() && listContacts.getSelectedIndex() != -1) {
                 String selected = listContacts.getSelectedValue();
                 String[] parts = selected.split(" - ");
                 if (parts.length >= 4) {
@@ -97,83 +97,89 @@ public class InterfaceGraphique extends JFrame {
     }
 
     private void ajouterContact() {
-        try {
-            if (tfId.getText().trim().isEmpty() || tfNom.getText().trim().isEmpty() ||
-                    tfPrenom.getText().trim().isEmpty() || tfTelephone.getText().trim().isEmpty()) {
-                throw new IllegalArgumentException("Tous les champs doivent être remplis");
-            }
+        if (tfId.getText().trim().isEmpty() ||
+                tfNom.getText().trim().isEmpty() ||
+                tfPrenom.getText().trim().isEmpty() ||
+                tfTelephone.getText().trim().isEmpty()) {
 
-            Contact contact = new Contact(
-                    tfId.getText().trim(),
-                    tfNom.getText().trim(),
-                    tfPrenom.getText().trim(),
-                    tfTelephone.getText().trim()
-            );
+            JOptionPane.showMessageDialog(this, "Tous les champs doivent être remplis", "Erreur", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-            contactDAO.ajouterContact(contact);
+        // Création du contact
+        Contact contact = new Contact(
+                tfId.getText().trim(),
+                tfNom.getText().trim(),
+                tfPrenom.getText().trim(),
+                tfTelephone.getText().trim()
+        );
+
+        // Appel de la méthode DAO
+        boolean succes = contactDAO.ajouterContact(contact);
+
+        // Message selon le résultat
+        if (succes) {
+            JOptionPane.showMessageDialog(this, "Contact ajouté avec succès !");
             chargerContacts();
             viderChamps();
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalArgumentException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.WARNING_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Erreur : le contact existe déjà ou le numéro est invalide {8chiffre} !", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     private void modifierContact() {
-        try {
-            int selectedIndex = listContacts.getSelectedIndex();
-            if (selectedIndex == -1) {
-                throw new IllegalStateException("Veuillez sélectionner un contact à modifier");
-            }
+        // Vérifie si l'index du contact sélectionné est valide
+        String selected = listContacts.getSelectedValue();
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this, "Sélectionnez un contact à modifier !");
+            return;
+        }
 
-            String id = tfId.getText().trim();
-            Contact nouveauContact = new Contact(
-                    id,
-                    tfNom.getText().trim(),
-                    tfPrenom.getText().trim(),
-                    tfTelephone.getText().trim()
-            );
+        // Récupère les informations du contact à modifier
+        String id = tfId.getText().trim();
+        Contact nouveauContact = new Contact(
+                id,
+                tfNom.getText().trim(),
+                tfPrenom.getText().trim(),
+                tfTelephone.getText().trim()
+        );
 
-            contactDAO.modifierContact(id, nouveauContact);
+        // Appelle la méthode pour modifier le contact dans la base de données
+        boolean succes = contactDAO.modifierContact(id, nouveauContact);
+
+        // Affiche un message selon si la modification a réussi ou échoué
+        if (succes) {
+            JOptionPane.showMessageDialog(this, "Contact modifié avec succès.");
             chargerContacts();
             viderChamps();
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalStateException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.WARNING_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Erreur lors de la modification du contact.", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     private void supprimerContact() {
-        try {
-            int selectedIndex = listContacts.getSelectedIndex();
-            if (selectedIndex == -1) {
-                throw new IllegalStateException("Veuillez sélectionner un contact à supprimer");
-            }
+        String selected = listContacts.getSelectedValue();
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this, "Sélectionnez un contact !");
+            return;
+        }
 
-            int confirmation = JOptionPane.showConfirmDialog(
-                    this,
-                    "Êtes-vous sûr de vouloir supprimer ce contact?",
-                    "Confirmation",
-                    JOptionPane.YES_NO_OPTION);
+        String id = selected.split(" - ")[0]; // Récupère l'ID du contact sélectionné
 
-            if (confirmation == JOptionPane.YES_OPTION) {
-                String selected = listContacts.getSelectedValue();
-                String id = selected.split(" - ")[0];
-                contactDAO.supprimerContact(id);
-                chargerContacts();
-                viderChamps();
-            }
+        boolean succes = contactDAO.supprimerContact(id);
 
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalStateException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Erreur", JOptionPane.WARNING_MESSAGE);
+        if (succes) {
+            JOptionPane.showMessageDialog(this, "Contact supprimé.");
+            chargerContacts();
+            viderChamps();
+        } else {
+            JOptionPane.showMessageDialog(this, "Erreur de suppression !");
         }
     }
+
+
 
     private void rechercherContact() {
         String motCle = tfRecherche.getText().trim();

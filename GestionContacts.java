@@ -26,13 +26,13 @@ public class GestionContacts {
         return contacts;
     }
 
-    public void ajouterContact(Contact contact) throws SQLException {
+    public boolean ajouterContact(Contact contact) {
         if (contactExiste(contact)) {
-            throw new SQLException("Ce contact existe déjà");
+            return false; // Le contact existe déjà
         }
 
         if (!telephoneValide(contact.getTelephone())) {
-            throw new SQLException("Le téléphone doit comporter exactement 8 chiffres");
+            return false; // Numéro de téléphone invalide  {8chiffre}
         }
 
         String sql = "INSERT INTO contacts (id, nom, prenom, telephone) VALUES (?, ?, ?, ?)";
@@ -44,22 +44,36 @@ public class GestionContacts {
             stmt.setString(3, contact.getPrenom());
             stmt.setString(4, contact.getTelephone());
             stmt.executeUpdate();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
-    public void supprimerContact(String id) throws SQLException {
+
+    public boolean supprimerContact(String id) {
         String sql = "DELETE FROM contacts WHERE id=?";
+
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, id);
-            stmt.executeUpdate();
+            int rowsAffected = stmt.executeUpdate();
+
+            return rowsAffected > 0;
+
+        } catch (Exception e) {
+            return false;
         }
     }
 
-    public void modifierContact(String id, Contact nouveauContact) throws SQLException {
+
+    public boolean modifierContact(String id, Contact nouveauContact) {
         if (!telephoneValide(nouveauContact.getTelephone())) {
-            throw new SQLException("Le téléphone doit comporter exactement 8 chiffres");
+            return false;  // Retourne false si le téléphone est invalide
+        }
+        if (contactExiste(nouveauContact)){
+            return  false;
         }
 
         String sql = "UPDATE contacts SET nom=?, prenom=?, telephone=? WHERE id=?";
@@ -70,9 +84,15 @@ public class GestionContacts {
             stmt.setString(2, nouveauContact.getPrenom());
             stmt.setString(3, nouveauContact.getTelephone());
             stmt.setString(4, id);
-            stmt.executeUpdate();
+            int rowsAffected = stmt.executeUpdate();
+
+            return rowsAffected > 0;  // Retourne true si des lignes ont été affectées
+
+        } catch (Exception e) {
+            return false;
         }
     }
+
 
     public List<Contact> rechercherContacts(String motCle) {
         List<Contact> contacts = new ArrayList<>();
@@ -101,8 +121,9 @@ public class GestionContacts {
         return contacts;
     }
 
-    private boolean contactExiste(Contact contact) throws SQLException {
+    private boolean contactExiste(Contact contact) {
         String sql = "SELECT COUNT(*) FROM contacts WHERE nom=? AND prenom=? AND telephone=?";
+
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -112,8 +133,12 @@ public class GestionContacts {
 
             ResultSet rs = stmt.executeQuery();
             return rs.next() && rs.getInt(1) > 0;
+
+        } catch (Exception e) {
+            return false;
         }
     }
+
 
     private boolean telephoneValide(String telephone) {
         return telephone != null && telephone.matches("\\d{8}");
